@@ -47,7 +47,7 @@ st.set_page_config(
     page_title="EasyPost Address Validator",
     page_icon="📦"
 )
-st.markdown("📦 EasyPost Address Validator")
+st.title("📦 EasyPost Address Validator")
 
 uploaded_file = st.file_uploader("Upload an Excel file with addresses", type=["xlsx"])
 
