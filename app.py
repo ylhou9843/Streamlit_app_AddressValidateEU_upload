@@ -47,6 +47,9 @@ st.set_page_config(
     page_title="MyCAF Address Validator",
     page_icon="📦"
 )
+
+st.link_button("Single Search", "https://appaddrvalid-ilrcbsvbfneyxynvxmybvw.streamlit.app/")
+
 st.title("📦 MyCAF Address Validator")
 
 # Session state initialization
