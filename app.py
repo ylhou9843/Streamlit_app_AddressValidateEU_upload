@@ -43,6 +43,11 @@ def format_address_easypost(response):
         return "Invalid address or could not be verified"
 
 # --- Streamlit UI ---
+st.set_page_config(
+    page_title="EasyPost Address Validator",
+    page_icon="📦",
+    layout="wide"
+)
 st.markdown("### 📦 EasyPost Address Validator")
 
 uploaded_file = st.file_uploader("Upload an Excel file with addresses", type=["xlsx"])
