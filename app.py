@@ -49,6 +49,11 @@ st.set_page_config(
 )
 st.title("📦 MyCAF Address Validator")
 
+# Session state initialization
+if "validated" not in st.session_state:
+    st.session_state.validated = False
+    st.session_state.result_df = None
+
 uploaded_file = st.file_uploader("Upload an Excel file with addresses", type=["xlsx"])
 
 if uploaded_file:
@@ -57,65 +62,64 @@ if uploaded_file:
         df.fillna("", inplace=True)
         df = df.map(lambda x: x.upper() if isinstance(x, str) else x)
 
-        # Validate required columns
         required_columns = ["Address Line 1", "City", "Postal Code", "Country"]
         if not all(col in df.columns for col in required_columns):
             st.error("Missing one or more required columns: Address Line 1, City, Postal Code, Country")
         else:
-            results = []
-            with st.spinner("Validating addresses..."):
-                for _, row in df.iterrows():
-                    address = {
-                        "Address Line 1": row.get("Address Line 1", ""),
-                        "Address Line 2": row.get("Address Line 2", ""),
-                        "City": row.get("City", ""),
-                        "Postal Code": str(row.get("Postal Code", "")),
-                        "Country": row.get("Country", "")
-                    }
+            if st.button("Validate Address"):
+                results = []
+                with st.spinner("Validating addresses..."):
+                    for _, row in df.iterrows():
+                        address = {
+                            "Address Line 1": row.get("Address Line 1", ""),
+                            "Address Line 2": row.get("Address Line 2", ""),
+                            "City": row.get("City", ""),
+                            "Postal Code": str(row.get("Postal Code", "")),
+                            "Country": row.get("Country", "")
+                        }
 
-                    try:
-                        response, confidence = validate_address_easypost(address)
-                        formatted = format_address_easypost(response)
-                    except Exception as e:
-                        formatted = f"ERROR: {str(e)}"
-                        confidence = "Error"
+                        try:
+                            response, confidence = validate_address_easypost(address)
+                            formatted = format_address_easypost(response)
+                        except Exception as e:
+                            formatted = f"ERROR: {str(e)}"
+                            confidence = "Error"
 
-                    results.append({
-                        "Original Address": f"{address['Address Line 1']}, {address['City']}, {address['Postal Code']}, {address['Country']}",
-                        "Formatted Address": formatted,
-                        "Confidence": confidence
-                    })
+                        results.append({
+                            "Original Address": f"{address['Address Line 1']}, {address['City']}, {address['Postal Code']}, {address['Country']}",
+                            "Formatted Address": formatted,
+                            "Confidence": confidence
+                        })
 
-            result_df = pd.DataFrame(results)
-            st.success("Validation completed!")
-            st.dataframe(result_df)
+                result_df = pd.DataFrame(results)
+                st.session_state.result_df = result_df
+                st.session_state.validated = True
+                st.success("Validation completed!")
 
-            # Optional: allow download
-
-
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                result_df.to_excel(writer, index=False, sheet_name='Validated Results')
-
-                # Auto-adjust column widths
-                worksheet = writer.sheets['Validated Results']
-                for i, column in enumerate(result_df.columns, start=1):
-                    max_length = max(
-                        result_df[column].astype(str).map(len).max(),  # max length in column
-                        len(column)  # header length
-                    )
-                    worksheet.column_dimensions[get_column_letter(i)].width = max_length + 2  # padding
-
-            output.seek(0)
-
-            st.download_button(
-                label="Download Results as Excel",
-                data=output,
-                file_name="validated_addresses.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-            
-            # st.download_button("Download Results as Excel", data=result_df.to_excel(index=False), file_name="validated_addresses.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
         st.error(f"Failed to process file: {str(e)}")
+
+# Show result and download button if validation completed
+if st.session_state.validated and st.session_state.result_df is not None:
+    result_df = st.session_state.result_df
+    st.dataframe(result_df)
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        result_df.to_excel(writer, index=False, sheet_name='Validated Results')
+
+        worksheet = writer.sheets['Validated Results']
+        for i, column in enumerate(result_df.columns, start=1):
+            max_length = max(
+                result_df[column].astype(str).map(len).max(),
+                len(column)
+            )
+            worksheet.column_dimensions[get_column_letter(i)].width = max_length + 2
+
+    output.seek(0)
+    st.download_button(
+        label="Download Results as Excel",
+        data=output,
+        file_name="validated_addresses.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
